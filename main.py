@@ -1,56 +1,24 @@
-# import requests
-# import time
-import logging
-from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command, ChatMemberUpdatedFilter, KICKED, BaseFilter
-from aiogram.types import Message, ChatMemberUpdated
-from environs import Env
-import os
-
-env = Env()              # Создаем экземпляр класса Env
-env.read_env()
-
-bot_token = env('BOT_TOKEN')
-API_URL = f'https://api.telegram.org/bot'
-API_CATS_URL = 'https://api.thecatapi.com/v1/images/search'
-ERROR_TEXT = 'Здесь должна была быть картинка с котиком :('
-dp = Dispatcher()
-bot = Bot(bot_token)
-# logging.basicConfig(level=logging.DEBUG)
-# logging.getLogger(__name__)
+import asyncio
+from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand
+from Telegram_bot.handlers import other_handlers, user_handlers
+from config_data.config import Config, load_config
 
 
-@dp.message(Command(commands="start"))  # Обработка комонды Старт
-async def echo_start_command(message: Message):
-    await message.answer("Shalom!")
+async def main() -> None:
+    # Загружаем конфиг в переменную config
+    config: Config = load_config()
 
+    # Инициализируем бот и диспетчер
+    bot = Bot(token=config.tg_bot.token,parse_mode='HTML')
+    dp = Dispatcher()
 
-@dp.message(F.content_type == "photo")
-async def send_photo_echo(message: Message):
-    await message.reply_photo(message.photo[-1].file_id)
-
-
-
-@dp.message(Command(commands="end"))
-async def send_echo(message: Message):
-    await message.answer(text="go out")
-    # logging.debug('Это лог уровня DEBUG')
-    # logging.info('Это лог уровня INFO')
-    # logging.warning('Это лог уровня WARNING')
-    # logging.error('Это лог уровня ERROR')
-    # logging.critical('Это лог уровня CRITICAL')
-
-
-async def send_help_info(message: Message):
-    await message.answer(text="This bot on test stage now\n Please, don't upset :D")
-
-
-# dp.message.register(echo_start_command, Command(commands='start'))
-dp.message.register(send_help_info, Command(commands='help'))
-dp.message.register(send_echo)
-dp.message.register(send_photo_echo, F.photo)
+    # dp.include_router(other_handlers.router)
+    dp.include_router(user_handlers.router)
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
 
 
 if __name__ == "__main__":
-    dp.run_polling(bot)
+    asyncio.run(main())
